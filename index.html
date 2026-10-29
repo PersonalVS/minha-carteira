@@ -146,15 +146,71 @@ async function fetchCrypto(silent){
     save();render();
   }catch(e){if(!silent)alert('Não consegui buscar as cotações agora. Você pode digitar o preço manualmente na aba Cripto.')}
 }
-async function fetchFiis(){
-  if(!S.cfg.token){alert('Para atualizar as cotações dos FIIs automaticamente, informe um token gratuito do brapi.dev na aba Ajustes. Ou edite a cotação manualmente na aba Carteira.');return}
-  try{
-    const tk=S.fiis.map(f=>f.t).join(',');
-    const r=await fetch(`https://brapi.dev/api/quote/${tk}?token=${encodeURIComponent(S.cfg.token)}`);
-    const j=await r.json();
-    (j.results||[]).forEach(x=>{const f=S.fiis.find(f=>f.t===x.symbol);if(f&&x.regularMarketPrice)f.c=x.regularMarketPrice});
-    save();render();
-  }catch(e){alert('Não foi possível atualizar as cotações dos FIIs.')}
+let FBUSY=false,FERR=[];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ERRMSG={401:'token inválido ou ausente',402:'limite mensal do plano atingido',404:'ticker não encontrado',429:'muitas requisições, tente de novo em instantes'};
+async function brapiGet(tk,withDiv){
+  const url=`https://brapi.dev/api/quote/${encodeURIComponent(tk)}?token=${encodeURIComponent(S.cfg.token)}${withDiv?'&dividends=true':''}`;
+  const r=await fetch(url);
+  let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok){const e=new Error(ERRMSG[r.status]||(j&&(j.message||j.error))||('erro HTTP '+r.status));e.status=r.status;throw e}
+  const x=j&&j.results&&j.results[0];
+  if(!x)throw new Error('resposta sem dados');
+  return x;
+}
+function lastDiv(x){
+  const arr=x&&x.dividendsData&&x.dividendsData.cashDividends;
+  if(!Array.isArray(arr))return null;
+  const now=Date.now();
+  const ok=arr.filter(d=>d&&+d.rate>0&&d.paymentDate&&new Date(d.paymentDate).getTime()<=now)
+    .sort((a,b)=>new Date(b.paymentDate)-new Date(a.paymentDate));
+  return ok.length?+ok[0].rate:null;
+}
+async function fetchFiis(silent){
+  const tok=(S.cfg.token||'').trim();
+  if(!tok){if(!silent)alert('Informe seu token do brapi.dev na aba Ajustes. Ou edite a cotação manualmente na aba Carteira.');return}
+  if(FBUSY)return;
+  if(silent&&S.fiisUpd&&Date.now()-new Date(S.fiisUpd).getTime()<15*60000)return;
+  FBUSY=true;FERR=[];render();
+  const useDiv=S.cfg.divAuto!==false;
+  let okN=0,fatal=false;
+  for(const f of S.fiis){
+    if(fatal)break;
+    try{
+      let x;
+      try{x=await brapiGet(f.t,useDiv)}
+      catch(e){
+        if(useDiv&&![401,402,404,429].includes(e.status))x=await brapiGet(f.t,false);
+        else throw e;
+      }
+      if(typeof x.regularMarketPrice==='number')f.c=x.regularMarketPrice;
+      if(typeof x.regularMarketChangePercent==='number')f.chg=x.regularMarketChangePercent;
+      const d=useDiv?lastDiv(x):null;
+      if(d!==null)f.div=d;
+      okN++;
+    }catch(e){
+      FERR.push(`${f.t}: ${e.message}`);
+      if([401,402,429].includes(e.status)){fatal=true}
+    }
+  }
+  if(okN>0)S.fiisUpd=new Date().toISOString();
+  FBUSY=false;save();render();
+}
+function statusFiis(){
+  const u=S.fiisUpd?new Date(S.fiisUpd).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  let h=FBUSY?'⏳ Atualizando cotações…':(u?`Cotações atualizadas em ${u}. No plano gratuito o preço tem atraso de cerca de 30 minutos.`:'Cotações ainda não atualizadas (valores manuais).');
+  if(FERR.length)h+=`<br><span class="neg">${FERR.map(esc).join('<br>')}</span>`;
+  return `<p class="k">${h}</p>`;
+}
+function cHoje(rows){
+  if(!S.fiisUpd&&!FBUSY&&!FERR.length)return '';
+  const w=rows.filter(r=>typeof r.chg==='number').sort((a,b)=>b.chg-a.chg);
+  let big='';
+  w.filter(r=>Math.abs(r.chg)>=3).forEach(r=>{
+    big+=`<div class="alert ${r.chg<0?'r':'i'}"><b>${esc(r.t)}</b> ${r.chg<0?'caiu':'subiu'} ${num(Math.abs(r.chg))}% hoje. Veja o motivo (fato relevante, data-com, mudança nos proventos) antes de agir.</div>`;
+  });
+  const tbl=w.length?`<div class="wrap"><table><tr><th>Fundo</th><th>Cotação</th><th>Dia</th><th>Vs. preço médio</th><th>Leitura</th></tr>${w.map(r=>`<tr><td>${esc(r.t)}</td><td>${brl(r.c)}</td><td class="${cls(r.chg)}">${sg(r.chg)}</td><td class="${cls(r.var)}">${sg(r.var)}</td><td>${tag(r.v)}</td></tr>`).join('')}</table></div>`:'';
+  return `${big}<div class="card"><h2>Hoje nos seus FIIs</h2>${statusFiis()}${tbl}</div>`;
 }
 
 /* ---------- render ---------- */
@@ -188,6 +244,7 @@ function vResumo(){
     <div class="card"><div class="k">Aporte mensal</div><div class="v">${brl(S.cfg.aporte)}</div></div>
   </div>
   ${al}
+  ${cHoje(rows)}
   <div class="card"><h2>Peso de cada FII</h2>
     ${sorted.map(r=>`<div class="row"><span class="n">${r.t}</span><div class="bar"><i style="width:${r.peso}%"></i></div><span class="p">${num(r.peso,1)}%</span></div>`).join('')}
   </div>`;
@@ -211,7 +268,7 @@ function vCarteira(){
     <td><button class="x" onclick="delFii(${i})" title="Remover">×</button></td></tr>`).join('')}
   <tr><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td><b>${brl(tot)}</b></td><td></td><td></td></tr>
   </table></div>
-  <p style="margin-top:12px"><button class="g" onclick="addFii()">+ Adicionar fundo</button> <button class="g" onclick="fetchFiis()">Atualizar cotações (brapi)</button></p>
+  <p style="margin-top:12px"><button class="g" onclick="addFii()">+ Adicionar fundo</button> <button class="g" onclick="fetchFiis()">Atualizar cotações (brapi)</button></p>${statusFiis()}
   </div>`;
 }
 function upd(i,k,v){S.fiis[i][k]=v;save();render()}
@@ -297,7 +354,10 @@ function vCripto(){
 function vAjustes(){
   return `<div class="card"><h2>Ajustes</h2>
   <label class="lbl">Reserva de emergência (R$)</label><input type="number" class="w" value="${S.cfg.reserva}" onchange="S.cfg.reserva=+this.value;save();render()">
-  <label class="lbl">Token do brapi.dev (opcional, para atualizar cotações de FIIs)</label><input class="w" value="${S.cfg.token||''}" onchange="S.cfg.token=this.value.trim();save()">
+  <label class="lbl">Token do brapi.dev (para atualizar cotações de FIIs)</label><input class="w" value="${S.cfg.token||''}" onchange="S.cfg.token=this.value.trim();S.fiisUpd=null;save();fetchFiis()">
+  <p style="margin-top:8px"><button class="g" onclick="S.fiisUpd=null;fetchFiis()">Testar token e atualizar agora</button></p>
+  ${statusFiis()}
+  <label class="lbl" style="display:flex;gap:8px;align-items:center"><input type="checkbox" style="width:auto" ${S.cfg.divAuto!==false?'checked':''} onchange="S.cfg.divAuto=this.checked;save()"> Tentar buscar também o último provento pago (se o seu plano permitir)</label>
   <p style="margin-top:14px"><button class="g" onclick="exportar()">Exportar dados (JSON)</button>
   <label class="g" style="display:inline-block;cursor:pointer">Importar<input type="file" accept=".json" style="display:none" onchange="importar(this)"></label>
   <button class="g" onclick="if(confirm('Voltar aos dados iniciais?')){S=JSON.parse(JSON.stringify(DEF));save();render()}">Restaurar dados iniciais</button></p>
@@ -315,6 +375,7 @@ function importar(inp){
 
 render();
 fetchCrypto(true);
+fetchFiis(true);
 </script>
 </body>
 </html>
