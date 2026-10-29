@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minha Carteira — FIIs e Cripto</title>
+<style>
+:root{--bg:#0e0e11;--card:#17171c;--line:#2a2a33;--txt:#f1f1f4;--mut:#9a9aa8;--pri:#a855f7;--ok:#34d399;--bad:#f87171;--warn:#fbbf24;--info:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+header{padding:16px 16px 0;max-width:1000px;margin:0 auto}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mut);font-size:13px;margin:0 0 12px}
+nav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line)}
+nav button{background:none;border:0;color:var(--mut);padding:10px 14px;cursor:pointer;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent}
+nav button.on{color:var(--txt);border-bottom-color:var(--pri)}
+main{max-width:1000px;margin:0 auto;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.grid .card{margin:0}
+.card h2{font-size:15px;margin:0 0 10px}
+.k{font-size:12px;color:var(--mut)}
+.v{font-size:20px;font-weight:600}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500}
+input,select{background:#0e0e11;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;width:90px}
+input.w{width:100%}
+input[type=range]{width:100%;padding:0}
+button.b{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px}
+button.g{background:#26262e;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px}
+button.x{background:none;border:0;color:var(--bad);cursor:pointer;font-size:16px}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.t-reforcar{background:#064e3b;color:var(--ok)}
+.t-manter{background:#1e3a5f;color:var(--info)}
+.t-observar{background:#4a3a05;color:var(--warn)}
+.t-reavaliar{background:#5b1d1d;color:var(--bad)}
+.t-concentrado{background:#3b2a5c;color:var(--pri)}
+.bar{height:10px;background:#26262e;border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--pri)}
+.row{display:flex;gap:10px;align-items:center;margin:6px 0;font-size:13px}
+.row .n{width:70px}.row .p{width:60px;text-align:right;color:var(--mut)}.row .bar{flex:1}
+.alert{border-left:3px solid var(--warn);background:#2a2410;padding:10px 12px;border-radius:8px;margin:8px 0;font-size:13px}
+.alert.r{border-color:var(--bad);background:#2a1414}
+.alert.i{border-color:var(--info);background:#0f1b2b}
+ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--mut)}
+.lbl{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+footer{max-width:1000px;margin:0 auto;padding:0 16px 40px;color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Minha Carteira — FIIs e Cripto</h1>
+  <p class="sub">Análise da carteira, plano de aporte mensal e acompanhamento de Bitcoin e Ethereum. Dados salvos só no seu navegador.</p>
+  <nav id="tabs"></nav>
+</header>
+<main id="app"></main>
+<footer>
+  Ferramenta educacional. As notas e sugestões vêm de regras simples (rendimento, peso na carteira, queda vs. preço médio) e não são recomendação de investimento. Cripto é muito volátil: invista só o que aceita ver oscilar forte.
+</footer>
+
+<script>
+const KEY='carteira_v1';
+const DEF={
+  cfg:{aporte:600,pctCripto:20,btcShare:70,reserva:3500,token:''},
+  fiis:[
+    {t:'CPTS11',q:1,pm:7.58,c:6.99,div:0.09,seg:'Papel'},
+    {t:'GARE11',q:2,pm:8.71,c:8.17,div:0.16,seg:'Papel'},
+    {t:'KNSC11',q:1,pm:8.70,c:8.77,div:0.08,seg:'Papel'},
+    {t:'MXRF11',q:1,pm:9.24,c:9.00,div:0.10,seg:'Papel'},
+    {t:'SNEL11',q:501,pm:8.06,c:7.57,div:0.10,seg:'Outro'},
+    {t:'SNFF11',q:1,pm:78.01,c:74.00,div:null,seg:'Fundo de Fundos'},
+    {t:'TRXF11',q:1,pm:74.09,c:65.80,div:0.93,seg:'Tijolo'},
+    {t:'VGHF11',q:2,pm:7.21,c:4.86,div:0.12,seg:'Papel'},
+    {t:'VGIR11',q:10,pm:9.60,c:9.11,div:null,seg:'Papel'}
+  ],
+  cripto:{btc:{q:0,inv:0,p:0,ch:null},eth:{q:0,inv:0,p:0,ch:null}}
+};
+let S=load(),TAB='resumo';
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.fiis)return s}catch(e){}return JSON.parse(JSON.stringify(DEF))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+const brl=n=>(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const num=(n,d=2)=>(n||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const sg=n=>(n>0?'+':'')+num(n)+'%';
+const cls=n=>n>0?'pos':n<0?'neg':'';
+const LBL={reforcar:'Reforçar',manter:'Manter',observar:'Observar',reavaliar:'Reavaliar',concentrado:'Segurar (concentrado)'};
+
+/* ---------- análise ---------- */
+function calc(){
+  const rows=S.fiis.map(f=>{
+    const val=f.q*f.c,inv=f.q*f.pm;
+    const hasDiv=f.div!==null&&f.div!==''&&!isNaN(f.div);
+    return {...f,val,inv,var:f.pm?(f.c/f.pm-1)*100:0,dy:hasDiv&&f.c?f.div*12/f.c*100:null};
+  });
+  const tot=rows.reduce((a,r)=>a+r.val,0);
+  const seg={};rows.forEach(r=>seg[r.seg]=(seg[r.seg]||0)+r.val);
+  rows.forEach(r=>{r.peso=tot?r.val/tot*100:0;r.segPeso=tot?seg[r.seg]/tot*100:0;analyse(r)});
+  return {rows,tot};
+}
+function analyse(r){
+  let s=50;const why=[];
+  if(r.dy===null){s-=5;why.push('Sem provento informado no último mês. Confira se o fundo realmente pagou.')}
+  else if(r.dy<6){s-=10;why.push(`Rendimento anualizado baixo (${num(r.dy,1)}% ao ano).`)}
+  else if(r.dy<8){why.push(`Rendimento anualizado modesto (${num(r.dy,1)}% ao ano).`)}
+  else if(r.dy<=13){s+=20;why.push(`Rendimento anualizado saudável (${num(r.dy,1)}% ao ano).`)}
+  else if(r.dy<=17){s+=12;why.push(`Rendimento anualizado alto (${num(r.dy,1)}% ao ano). Bom, mas vale checar se é sustentável.`)}
+  else{s-=5;why.push(`Rendimento anualizado muito alto (${num(r.dy,1)}% ao ano). Costuma indicar preço caindo ou provento que pode não se repetir.`)}
+  if(r.var>=0){s+=10;why.push(`Cota acima do seu preço médio (${sg(r.var)}).`)}
+  else if(r.var>-10){why.push(`Cota um pouco abaixo do seu preço médio (${sg(r.var)}).`)}
+  else if(r.var>-20){s-=8;why.push(`Cota bem abaixo do seu preço médio (${sg(r.var)}).`)}
+  else{s-=18;why.push(`Queda forte vs. seu preço médio (${sg(r.var)}). Investigue o motivo antes de colocar mais dinheiro.`)}
+  if(r.peso>40){s-=15;why.push(`Pesa ${num(r.peso,1)}% da carteira de FIIs: concentração alta.`)}
+  else if(r.peso>25){s-=8;why.push(`Pesa ${num(r.peso,1)}% da carteira: concentração relevante.`)}
+  else if(r.peso>=5){s+=5}
+  if(r.segPeso<15){s+=5;why.push(`O segmento "${r.seg}" é pouco representado (${num(r.segPeso,1)}%): ajuda a diversificar.`)}
+  if(r.q<=2&&r.val<100){why.push('Posição minúscula: o provento mensal é de centavos e não muda sua renda.')}
+  r.score=Math.max(0,Math.min(100,Math.round(s)));r.why=why;
+  r.v=r.peso>40?'concentrado':r.score>=65?'reforcar':r.score>=50?'manter':r.score>=35?'observar':'reavaliar';
+}
+function planFiis(rows,budget){
+  let el=rows.filter(r=>(r.v==='reforcar'||r.v==='manter')&&r.peso<25&&r.c>0);
+  if(!el.length)el=rows.filter(r=>r.v!=='reavaliar'&&r.peso<25&&r.c>0);
+  const bought={};el.forEach(r=>bought[r.t]=0);
+  let left=budget;
+  for(let i=0;i<5000;i++){
+    const c=el.filter(r=>r.c<=left+1e-9);
+    if(!c.length)break;
+    c.sort((a,b)=>((a.val+bought[a.t]*a.c)/Math.max(a.score,10))-((b.val+bought[b.t]*b.c)/Math.max(b.score,10)));
+    const p=c[0];bought[p.t]++;left-=p.c;
+  }
+  return {items:el.filter(r=>bought[r.t]>0).map(r=>({r,n:bought[r.t],cost:bought[r.t]*r.c})),left};
+}
+
+/* ---------- cripto ---------- */
+function criptoVal(){const c=S.cripto;return {btc:c.btc.q*c.btc.p,eth:c.eth.q*c.eth.p}}
+async function fetchCrypto(silent){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl&include_24hr_change=true');
+    const j=await r.json();
+    S.cripto.btc.p=j.bitcoin.brl;S.cripto.btc.ch=j.bitcoin.brl_24h_change;
+    S.cripto.eth.p=j.ethereum.brl;S.cripto.eth.ch=j.ethereum.brl_24h_change;
+    save();render();
+  }catch(e){if(!silent)alert('Não consegui buscar as cotações agora. Você pode digitar o preço manualmente na aba Cripto.')}
+}
+async function fetchFiis(){
+  if(!S.cfg.token){alert('Para atualizar as cotações dos FIIs automaticamente, informe um token gratuito do brapi.dev na aba Ajustes. Ou edite a cotação manualmente na aba Carteira.');return}
+  try{
+    const tk=S.fiis.map(f=>f.t).join(',');
+    const r=await fetch(`https://brapi.dev/api/quote/${tk}?token=${encodeURIComponent(S.cfg.token)}`);
+    const j=await r.json();
+    (j.results||[]).forEach(x=>{const f=S.fiis.find(f=>f.t===x.symbol);if(f&&x.regularMarketPrice)f.c=x.regularMarketPrice});
+    save();render();
+  }catch(e){alert('Não foi possível atualizar as cotações dos FIIs.')}
+}
+
+/* ---------- render ---------- */
+const TABS=[['resumo','Resumo'],['carteira','Carteira'],['analise','Análise'],['aporte','Aporte do mês'],['cripto','Cripto'],['ajustes','Ajustes']];
+function render(){
+  document.getElementById('tabs').innerHTML=TABS.map(([k,l])=>`<button class="${k===TAB?'on':''}" onclick="TAB='${k}';render()">${l}</button>`).join('');
+  document.getElementById('app').innerHTML=({resumo:vResumo,carteira:vCarteira,analise:vAnalise,aporte:vAporte,cripto:vCripto,ajustes:vAjustes})[TAB]();
+}
+function tag(v){return `<span class="tag t-${v}">${LBL[v]}</span>`}
+
+function vResumo(){
+  const {rows,tot}=calc(),cv=criptoVal(),cTot=cv.btc+cv.eth,pat=tot+cTot;
+  const inv=rows.reduce((a,r)=>a+r.inv,0),pl=tot-inv,plp=inv?pl/inv*100:0;
+  const prov=rows.reduce((a,r)=>a+(r.div?r.div*r.q:0),0);
+  const sorted=[...rows].sort((a,b)=>b.val-a.val);
+  const top=sorted[0];
+  const small=rows.filter(r=>r.val<100).length;
+  let al='';
+  if(top&&top.peso>50)al+=`<div class="alert r"><b>Concentração:</b> ${top.t} é ${num(top.peso,1)}% da sua carteira de FIIs. Os outros ${rows.length-1} fundos juntos pesam ${num(100-top.peso,1)}%. Seu resultado depende quase só de um fundo.</div>`;
+  if(small>=3)al+=`<div class="alert"><b>Posições muito pequenas:</b> ${small} fundos têm menos de R$ 100 investidos. Com 1 ou 2 cotas, o provento é de centavos. Vale concentrar os aportes em poucos fundos bons em vez de espalhar.</div>`;
+  const worst=[...rows].sort((a,b)=>a.var-b.var)[0];
+  if(worst&&worst.var<-20)al+=`<div class="alert"><b>${worst.t}</b> está ${sg(worst.var)} vs. seu preço médio. Descubra o motivo da queda (vacância, inadimplência, corte de proventos) antes de decidir.</div>`;
+  al+=`<div class="alert i"><b>Reserva de emergência:</b> ${brl(S.cfg.reserva)} não entra nestes cálculos. Mantenha em algo com liquidez diária (ex.: Tesouro Selic ou CDB de liquidez diária), não em FII nem em cripto.</div>`;
+  return `
+  <div class="grid">
+    <div class="card"><div class="k">Patrimônio investido hoje</div><div class="v">${brl(pat)}</div></div>
+    <div class="card"><div class="k">FIIs</div><div class="v">${brl(tot)}</div></div>
+    <div class="card"><div class="k">Cripto</div><div class="v">${brl(cTot)}</div></div>
+    <div class="card"><div class="k">Resultado dos FIIs</div><div class="v ${cls(pl)}">${brl(pl)} <small>(${sg(plp)})</small></div></div>
+    <div class="card"><div class="k">Proventos do último mês</div><div class="v">${brl(prov)}</div></div>
+    <div class="card"><div class="k">Aporte mensal</div><div class="v">${brl(S.cfg.aporte)}</div></div>
+  </div>
+  ${al}
+  <div class="card"><h2>Peso de cada FII</h2>
+    ${sorted.map(r=>`<div class="row"><span class="n">${r.t}</span><div class="bar"><i style="width:${r.peso}%"></i></div><span class="p">${num(r.peso,1)}%</span></div>`).join('')}
+  </div>`;
+}
+
+function vCarteira(){
+  const {rows,tot}=calc();
+  return `<div class="card"><h2>Seus FIIs</h2>
+  <p class="k">Edite os campos direto na tabela. "Provento/cota" é o último valor pago por cota (deixe vazio se não pagou).</p>
+  <div class="wrap"><table>
+  <tr><th>Fundo</th><th>Cotas</th><th>Preço médio</th><th>Cotação</th><th>Provento/cota</th><th>Segmento</th><th>Valor</th><th>Result.</th><th></th></tr>
+  ${S.fiis.map((f,i)=>`<tr>
+    <td><input style="width:80px" value="${f.t}" onchange="upd(${i},'t',this.value.toUpperCase())"></td>
+    <td><input type="number" step="1" value="${f.q}" onchange="upd(${i},'q',+this.value)"></td>
+    <td><input type="number" step="0.01" value="${f.pm}" onchange="upd(${i},'pm',+this.value)"></td>
+    <td><input type="number" step="0.01" value="${f.c}" onchange="upd(${i},'c',+this.value)"></td>
+    <td><input type="number" step="0.01" value="${f.div??''}" onchange="upd(${i},'div',this.value===''?null:+this.value)"></td>
+    <td><select style="width:120px" onchange="upd(${i},'seg',this.value)">${['Papel','Tijolo','Fundo de Fundos','Fiagro','Outro'].map(o=>`<option ${o===f.seg?'selected':''}>${o}</option>`).join('')}</select></td>
+    <td>${brl(rows[i].val)}</td>
+    <td class="${cls(rows[i].var)}">${sg(rows[i].var)}</td>
+    <td><button class="x" onclick="delFii(${i})" title="Remover">×</button></td></tr>`).join('')}
+  <tr><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td><b>${brl(tot)}</b></td><td></td><td></td></tr>
+  </table></div>
+  <p style="margin-top:12px"><button class="g" onclick="addFii()">+ Adicionar fundo</button> <button class="g" onclick="fetchFiis()">Atualizar cotações (brapi)</button></p>
+  </div>`;
+}
+function upd(i,k,v){S.fiis[i][k]=v;save();render()}
+function addFii(){S.fiis.push({t:'NOVO11',q:0,pm:0,c:0,div:null,seg:'Papel'});save();render()}
+function delFii(i){if(confirm('Remover '+S.fiis[i].t+'?')){S.fiis.splice(i,1);save();render()}}
+
+function vAnalise(){
+  const {rows}=calc();
+  const order=['reforcar','manter','observar','concentrado','reavaliar'];
+  const s=[...rows].sort((a,b)=>b.score-a.score);
+  return `<div class="card"><h2>Como a nota é calculada</h2>
+  <p class="k">Nota de 0 a 100 somando: rendimento anualizado (provento × 12 ÷ cotação), queda ou alta vs. seu preço médio, peso na carteira (penaliza concentração) e diversificação de segmento. É um filtro simples para organizar a decisão, não uma previsão. Antes de comprar ou vender, olhe também vacância, inadimplência, qualidade dos imóveis/recebíveis e histórico de proventos do fundo.</p>
+  <p class="k"><b>Reforçar</b> ≥ 65 · <b>Manter</b> 50–64 · <b>Observar</b> 35–49 · <b>Reavaliar</b> &lt; 35 · <b>Segurar (concentrado)</b> = pesa mais de 40% da carteira, não é para colocar mais dinheiro.</p></div>
+  ${s.map(r=>`<div class="card"><div class="row"><b style="font-size:16px">${r.t}</b>${tag(r.v)}<span class="k" style="margin-left:auto">Nota ${r.score}/100</span></div>
+    <div class="bar"><i style="width:${r.score}%"></i></div>
+    <ul>${r.why.map(w=>`<li>${w}</li>`).join('')}</ul></div>`).join('')}
+  <div class="card"><h2>O que fazer com cada grupo</h2>
+  <ul>
+   <li><b>Reforçar / Manter:</b> candidatos a receber o aporte do mês.</li>
+   <li><b>Observar:</b> não coloque mais dinheiro por enquanto; acompanhe os próximos proventos.</li>
+   <li><b>Reavaliar:</b> candidato a sair. Se vender com prejuízo, o valor pode ser usado para abater lucros futuros com FIIs no IR (ganhos em FII pagam 20%, sem isenção). Para posições de 1 a 2 cotas, o efeito é pequeno; a decisão é mais sobre organizar a carteira.</li>
+   <li><b>Segurar (concentrado):</b> não precisa vender, mas dirija os novos aportes para outros fundos até o peso cair.</li>
+  </ul></div>`;
+}
+
+function vAporte(){
+  const {rows}=calc(),cfg=S.cfg,tot=cfg.aporte,cr=tot*cfg.pctCripto/100,fi=tot-cr;
+  const p=planFiis(rows,fi),btc=cr*cfg.btcShare/100,eth=cr-btc,c=S.cripto;
+  const bq=c.btc.p?btc/c.btc.p:null,eq=c.eth.p?eth/c.eth.p:null;
+  return `<div class="two">
+  <div class="card"><h2>Defina o aporte</h2>
+    <label class="lbl">Aporte mensal (R$)</label><input type="number" class="w" value="${cfg.aporte}" onchange="S.cfg.aporte=+this.value;save();render()">
+    <label class="lbl">Parte para cripto: ${cfg.pctCripto}% (${brl(cr)})</label><input type="range" min="0" max="50" step="5" value="${cfg.pctCripto}" oninput="S.cfg.pctCripto=+this.value;save();render()">
+    <label class="lbl">Dentro da cripto: ${cfg.btcShare}% Bitcoin / ${100-cfg.btcShare}% Ethereum</label><input type="range" min="0" max="100" step="5" value="${cfg.btcShare}" oninput="S.cfg.btcShare=+this.value;save();render()">
+    <p class="k" style="margin-top:12px">Ponto de partida comum: 10% a 20% do aporte em cripto, com mais Bitcoin do que Ethereum, comprando todo mês no mesmo dia (aporte recorrente), sem tentar acertar o melhor momento.</p>
+  </div>
+  <div class="card"><h2>Cripto do mês</h2>
+    <div class="row"><span class="n">Bitcoin</span><b>${brl(btc)}</b><span class="k">${bq?'≈ '+num(bq,6)+' BTC':'atualize o preço na aba Cripto'}</span></div>
+    <div class="row"><span class="n">Ethereum</span><b>${brl(eth)}</b><span class="k">${eq?'≈ '+num(eq,5)+' ETH':'atualize o preço na aba Cripto'}</span></div>
+    <p class="k">No app do Nubank, a compra de cripto fica na seção de Criptomoedas. Confira as taxas e o spread antes de comprar.</p>
+  </div></div>
+  <div class="card"><h2>FIIs do mês (${brl(fi)})</h2>
+    ${p.items.length?`<div class="wrap"><table><tr><th>Fundo</th><th>Nota</th><th>Cotas a comprar</th><th>Cotação</th><th>Custo</th></tr>
+    ${p.items.map(x=>`<tr><td>${x.r.t}</td><td>${x.r.score}</td><td>${x.n}</td><td>${brl(x.r.c)}</td><td>${brl(x.cost)}</td></tr>`).join('')}
+    </table></div><p class="k">Sobra (não dá para comprar mais uma cota inteira): ${brl(p.left)}</p>`
+    :'<p class="k">Nenhum fundo elegível com a orçamento atual. Revise a aba Análise.</p>'}
+    <p class="k">Regra usada: só entram fundos marcados como Reforçar ou Manter, com menos de 25% de peso. As compras vão primeiro para os fundos com menor valor investido em relação à nota, até acabar o orçamento.</p>
+    ${p.items.length?`<button class="b" onclick="applyPlan()">Registrar este aporte na carteira</button>`:''}
+  </div>`;
+}
+function applyPlan(){
+  const {rows}=calc(),cfg=S.cfg,cr=cfg.aporte*cfg.pctCripto/100,fi=cfg.aporte-cr;
+  const p=planFiis(rows,fi);
+  if(!confirm('Registrar compras de FIIs e cripto deste mês na carteira?'))return;
+  p.items.forEach(x=>{const f=S.fiis.find(f=>f.t===x.r.t);const nq=f.q+x.n;f.pm=+(((f.q*f.pm)+x.n*f.c)/nq).toFixed(4);f.q=nq});
+  const c=S.cripto,b=cr*cfg.btcShare/100,e=cr-b;
+  if(c.btc.p&&b>0){c.btc.q+=b/c.btc.p;c.btc.inv+=b}
+  if(c.eth.p&&e>0){c.eth.q+=e/c.eth.p;c.eth.inv+=e}
+  save();TAB='resumo';render();
+}
+
+function vCripto(){
+  const c=S.cripto,cv=criptoVal();
+  const one=(k,nome)=>{const a=c[k],val=cv[k],pl=val-a.inv,pp=a.inv?pl/a.inv*100:0;
+    return `<div class="card"><h2>${nome}</h2>
+    <label class="lbl">Preço atual (R$) ${a.ch!==null&&a.ch!==undefined?`<span class="${cls(a.ch)}">${sg(a.ch)} em 24h</span>`:''}</label>
+    <input type="number" class="w" value="${a.p}" onchange="S.cripto.${k}.p=+this.value;save();render()">
+    <label class="lbl">Quantidade que você tem</label>
+    <input type="number" class="w" step="any" value="${a.q}" onchange="S.cripto.${k}.q=+this.value;save();render()">
+    <label class="lbl">Total investido (R$)</label>
+    <input type="number" class="w" value="${a.inv}" onchange="S.cripto.${k}.inv=+this.value;save();render()">
+    <p style="margin-top:12px">Valor hoje: <b>${brl(val)}</b> · Resultado: <b class="${cls(pl)}">${brl(pl)} (${sg(pp)})</b></p></div>`};
+  const pat=calc().tot+cv.btc+cv.eth,pc=pat?(cv.btc+cv.eth)/pat*100:0;
+  return `<p><button class="b" onclick="fetchCrypto()">Atualizar preços (CoinGecko)</button></p>
+  <div class="two">${one('btc','Bitcoin (BTC)')}${one('eth','Ethereum (ETH)')}</div>
+  <div class="card"><h2>Cripto na sua carteira</h2>
+    <p>Hoje a cripto representa <b>${num(pc,1)}%</b> do patrimônio investido (FIIs + cripto).</p>
+    <ul><li>Bitcoin é a cripto mais consolidada e costuma ser a base. Ethereum tem mais risco e mais oscilação.</li>
+    <li>Quedas de 50% ou mais já aconteceram nas duas. Defina um teto (por exemplo, 10% a 20% do patrimônio) e não aumente por impulso.</li>
+    <li>Compras mensais do mesmo valor diluem o preço médio ao longo do tempo.</li></ul></div>`;
+}
+
+function vAjustes(){
+  return `<div class="card"><h2>Ajustes</h2>
+  <label class="lbl">Reserva de emergência (R$)</label><input type="number" class="w" value="${S.cfg.reserva}" onchange="S.cfg.reserva=+this.value;save();render()">
+  <label class="lbl">Token do brapi.dev (opcional, para atualizar cotações de FIIs)</label><input class="w" value="${S.cfg.token||''}" onchange="S.cfg.token=this.value.trim();save()">
+  <p style="margin-top:14px"><button class="g" onclick="exportar()">Exportar dados (JSON)</button>
+  <label class="g" style="display:inline-block;cursor:pointer">Importar<input type="file" accept=".json" style="display:none" onchange="importar(this)"></label>
+  <button class="g" onclick="if(confirm('Voltar aos dados iniciais?')){S=JSON.parse(JSON.stringify(DEF));save();render()}">Restaurar dados iniciais</button></p>
+  <p class="k">Seus dados ficam apenas neste navegador (localStorage). Use Exportar para guardar uma cópia ou levar para outro aparelho.</p></div>`;
+}
+function exportar(){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download='carteira.json';a.click();
+}
+function importar(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.fiis)throw 0;S=j;save();render()}catch(e){alert('Arquivo inválido.')}};
+  r.readAsText(f);
+}
+
+render();
+fetchCrypto(true);
+</script>
+</body>
+</html>
